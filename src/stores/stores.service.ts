@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
+import { UpdateStoreDto } from './dto/update-store.dto';
 
 @Injectable()
 export class StoresService {
@@ -13,10 +15,8 @@ export class StoresService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(
-  ownerUserId: string,
-  dto: CreateStoreDto,
- ) {const existingSlug = await this.prisma.store.findUnique({
+  async create(ownerUserId: string, dto: CreateStoreDto) {
+    const existingSlug = await this.prisma.store.findUnique({
       where: {
         slug: dto.slug,
       },
@@ -65,5 +65,65 @@ export class StoresService {
     }
 
     return store;
+  }
+
+  private async ensureOwnership(
+    storeId: string,
+    userId: string,
+    role: string,
+  ) {
+    const store = await this.findOne(storeId);
+
+    if (role === 'ADMIN') {
+      return store;
+    }
+
+    if (store.ownerUserId !== userId) {
+      throw new ForbiddenException('You can only manage your own store');
+    }
+
+    return store;
+  }
+
+  async update(
+    id: string,
+    userId: string,
+    role: string,
+    dto: UpdateStoreDto,
+  ) {
+    await this.ensureOwnership(id, userId, role);
+
+    if (dto.slug) {
+      const existingSlug = await this.prisma.store.findUnique({
+        where: {
+          slug: dto.slug,
+        },
+      });
+
+      if (existingSlug && existingSlug.id !== id) {
+        throw new BadRequestException('Store slug already exists');
+      }
+    }
+
+    return this.prisma.store.update({
+      where: {
+        id,
+      },
+      data: dto,
+    });
+  }
+
+  async remove(
+    id: string,
+    userId: string,
+    role: string,
+  ) {
+    await this.ensureOwnership(id, userId, role);
+
+    return this.prisma.store.delete({
+      where: {
+        id,
+      },
+    });
   }
 }
