@@ -13,8 +13,10 @@ export class StoresService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(dto: CreateStoreDto) {
-    const existingSlug = await this.prisma.store.findUnique({
+  async create(
+  ownerUserId: string,
+  dto: CreateStoreDto,
+ ) {const existingSlug = await this.prisma.store.findUnique({
       where: {
         slug: dto.slug,
       },
@@ -26,7 +28,7 @@ export class StoresService {
 
     return this.prisma.store.create({
       data: {
-        ownerUserId: dto.ownerUserId,
+        ownerUserId,
         name: dto.name,
         slug: dto.slug,
         description: dto.description,

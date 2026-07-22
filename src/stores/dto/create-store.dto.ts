@@ -3,16 +3,12 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Max,
   Min,
   MinLength,
 } from 'class-validator';
 
 export class CreateStoreDto {
-  @IsUUID()
-  ownerUserId: string;
-
   @IsString()
   @MinLength(2)
   name: string;

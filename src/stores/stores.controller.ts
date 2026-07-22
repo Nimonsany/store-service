@@ -2,8 +2,10 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   Post,
+  UnauthorizedException,
 } from '@nestjs/common';
 
 import { StoresService } from './stores.service';
@@ -16,9 +18,24 @@ export class StoresController {
   ) {}
 
   @Post()
-  create(@Body() dto: CreateStoreDto) {
-    return this.storesService.create(dto);
+create(
+  @Headers('x-user-id')
+  ownerUserId: string | undefined,
+
+  @Body()
+  dto: CreateStoreDto,
+) {
+  if (!ownerUserId) {
+    throw new UnauthorizedException(
+      'User identity is missing',
+    );
   }
+
+  return this.storesService.create(
+    ownerUserId,
+    dto,
+  );
+}
 
   @Get()
   findAll() {
