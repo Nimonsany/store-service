@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StoreStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+model Store {
+  id               String      @id @default(uuid())
+
+  ownerUserId      String
+
+  name             String
+  slug             String      @unique
+  description      String?
+
+  phone            String?
+  email            String?
+
+  addressLine      String
+  city             String
+  district         String?
+  country          String      @default("Nepal")
+
+  latitude         Decimal     @db.Decimal(10, 7)
+  longitude        Decimal     @db.Decimal(10, 7)
+
+  deliveryRadiusKm Decimal     @default(10) @db.Decimal(5, 2)
+
+  status           StoreStatus @default(PENDING)
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([ownerUserId])
+  @@index([latitude, longitude])
+  @@map("stores")
+}
