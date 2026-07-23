@@ -140,4 +140,40 @@ export class StoresService {
       },
     });
   }
+
+  async findActiveStoreIds() {
+    const stores = await this.prisma.store.findMany({
+      where: {
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return {
+      storeIds: stores.map((store) => store.id),
+    };
+  }
+
+  async verifyPublicAccess(storeId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: {
+        id: storeId,
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (!store || store.status !== 'ACTIVE') {
+      throw new NotFoundException('Store not found');
+    }
+
+    return {
+      allowed: true,
+      storeId: store.id,
+    };
+  }
 }

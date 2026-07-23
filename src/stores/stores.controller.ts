@@ -36,7 +36,17 @@ export class StoresController {
     return this.storesService.findAll();
   }
 
-  // IMPORTANT: This route must be ABOVE @Get(':id')
+  @Get('active/ids')
+  findActiveStoreIds() {
+    return this.storesService.findActiveStoreIds();
+  }
+
+  @Get(':id/public-access')
+  verifyPublicAccess(@Param('id') id: string) {
+    return this.storesService.verifyPublicAccess(id);
+  }
+
+
   @Get(':id/manage-access')
   verifyManageAccess(
     @Param('id') id: string,
