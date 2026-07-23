@@ -8,12 +8,11 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { UpdateStoreStatusDto } from './dto/update-store-status.dto';
 
 @Injectable()
 export class StoresService {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(ownerUserId: string, dto: CreateStoreDto) {
     const existingSlug = await this.prisma.store.findUnique({
@@ -67,11 +66,7 @@ export class StoresService {
     return store;
   }
 
-  private async ensureOwnership(
-    storeId: string,
-    userId: string,
-    role: string,
-  ) {
+  private async ensureOwnership(storeId: string, userId: string, role: string) {
     const store = await this.findOne(storeId);
 
     if (role === 'ADMIN') {
@@ -85,11 +80,7 @@ export class StoresService {
     return store;
   }
 
-  async verifyManageAccess(
-    storeId: string,
-    userId: string,
-    role: string,
-  ) {
+  async verifyManageAccess(storeId: string, userId: string, role: string) {
     await this.ensureOwnership(storeId, userId, role);
 
     return {
@@ -98,12 +89,7 @@ export class StoresService {
     };
   }
 
-  async update(
-    id: string,
-    userId: string,
-    role: string,
-    dto: UpdateStoreDto,
-  ) {
+  async update(id: string, userId: string, role: string, dto: UpdateStoreDto) {
     await this.ensureOwnership(id, userId, role);
 
     if (dto.slug) {
@@ -126,16 +112,31 @@ export class StoresService {
     });
   }
 
-  async remove(
-    id: string,
-    userId: string,
-    role: string,
-  ) {
+  async remove(id: string, userId: string, role: string) {
     await this.ensureOwnership(id, userId, role);
 
     return this.prisma.store.delete({
       where: {
         id,
+      },
+    });
+  }
+
+  async updateStatus(id: string, role: string, dto: UpdateStoreStatusDto) {
+    if (role !== 'ADMIN') {
+      throw new ForbiddenException(
+        'Only administrators can change store status',
+      );
+    }
+
+    await this.findOne(id);
+
+    return this.prisma.store.update({
+      where: {
+        id,
+      },
+      data: {
+        status: dto.status,
       },
     });
   }
