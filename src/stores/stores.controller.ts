@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 
@@ -14,6 +15,7 @@ import { StoresService } from './stores.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { UpdateStoreStatusDto } from './dto/update-store-status.dto';
+import { StoreQueryDto } from './dto/store-query.dto';
 
 @Controller('stores')
 export class StoresController {
@@ -32,8 +34,11 @@ export class StoresController {
   }
 
   @Get()
-  findAll() {
-    return this.storesService.findAll();
+  findAll(
+    @Query()
+    query: StoreQueryDto,
+  ) {
+    return this.storesService.findAll(query);
   }
 
   @Get('active/ids')
@@ -46,7 +51,6 @@ export class StoresController {
     return this.storesService.verifyPublicAccess(id);
   }
 
-
   @Get(':id/manage-access')
   verifyManageAccess(
     @Param('id') id: string,
@@ -58,6 +62,39 @@ export class StoresController {
     }
 
     return this.storesService.verifyManageAccess(id, userId, role);
+  }
+
+  @Get('management/all')
+  findForManagement(
+    @Headers('x-user-role')
+    role: string | undefined,
+
+    @Query()
+    query: StoreQueryDto,
+  ) {
+    if (role !== 'ADMIN') {
+      throw new UnauthorizedException('Administrator access is required');
+    }
+
+    return this.storesService.findForManagement(query);
+  }
+
+  @Get('owner/me')
+  findMyStores(
+    @Headers('x-user-id')
+    userId: string | undefined,
+
+    @Headers('x-user-role')
+    role: string | undefined,
+
+    @Query()
+    query: StoreQueryDto,
+  ) {
+    if (!userId || (role !== 'STORE_OWNER' && role !== 'ADMIN')) {
+      throw new UnauthorizedException('Store owner access is required');
+    }
+
+    return this.storesService.findMyStores(userId, query);
   }
 
   @Get(':id')

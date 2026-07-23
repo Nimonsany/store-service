@@ -9,6 +9,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { UpdateStoreStatusDto } from './dto/update-store-status.dto';
+import { Prisma } from '@prisma/client';
+import { StoreQueryDto } from './dto/store-query.dto';
 
 @Injectable()
 export class StoresService {
@@ -44,12 +46,13 @@ export class StoresService {
     });
   }
 
-  async findAll() {
-    return this.prisma.store.findMany({
-      orderBy: {
-        createdAt: 'desc',
+  async findAll(query: StoreQueryDto) {
+    return this.findStores(
+      {
+        status: 'ACTIVE',
       },
-    });
+      query,
+    );
   }
 
   async findOne(id: string) {
@@ -175,5 +178,101 @@ export class StoresService {
       allowed: true,
       storeId: store.id,
     };
+  }
+
+  private async findStores(
+    where: Prisma.StoreWhereInput,
+    query: StoreQueryDto,
+  ) {
+    const { page, limit, search, city, sortBy, sortOrder } = query;
+
+    const skip = (page - 1) * limit;
+
+    const finalWhere: Prisma.StoreWhereInput = {
+      ...where,
+
+      ...(city && {
+        city: {
+          equals: city,
+          mode: 'insensitive',
+        },
+      }),
+
+      ...(search && {
+        OR: [
+          {
+            name: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            description: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            slug: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            city: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      }),
+    };
+
+    const [stores, total] = await this.prisma.$transaction([
+      this.prisma.store.findMany({
+        where: finalWhere,
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      }),
+
+      this.prisma.store.count({
+        where: finalWhere,
+      }),
+    ]);
+
+    return {
+      data: stores,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findForManagement(query: StoreQueryDto) {
+    const where: Prisma.StoreWhereInput = {
+      ...(query.status && {
+        status: query.status,
+      }),
+    };
+
+    return this.findStores(where, query);
+  }
+
+  async findMyStores(ownerUserId: string, query: StoreQueryDto) {
+    const where: Prisma.StoreWhereInput = {
+      ownerUserId,
+
+      ...(query.status && {
+        status: query.status,
+      }),
+    };
+
+    return this.findStores(where, query);
   }
 }
