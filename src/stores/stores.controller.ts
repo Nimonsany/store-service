@@ -37,6 +37,20 @@ export class StoresController {
     return this.storesService.findAll();
   }
 
+  // IMPORTANT: This route must be ABOVE @Get(':id')
+  @Get(':id/manage-access')
+  verifyManageAccess(
+    @Param('id') id: string,
+    @Headers('x-user-id') userId: string | undefined,
+    @Headers('x-user-role') role: string | undefined,
+  ) {
+    if (!userId || !role) {
+      throw new UnauthorizedException('User identity is missing');
+    }
+
+    return this.storesService.verifyManageAccess(id, userId, role);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.storesService.findOne(id);

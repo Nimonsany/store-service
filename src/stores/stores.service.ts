@@ -85,6 +85,19 @@ export class StoresService {
     return store;
   }
 
+  async verifyManageAccess(
+    storeId: string,
+    userId: string,
+    role: string,
+  ) {
+    await this.ensureOwnership(storeId, userId, role);
+
+    return {
+      allowed: true,
+      storeId,
+    };
+  }
+
   async update(
     id: string,
     userId: string,
