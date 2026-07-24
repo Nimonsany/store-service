@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -16,7 +17,29 @@ import { StoreQueryDto } from './dto/store-query.dto';
 export class StoresService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(ownerUserId: string, dto: CreateStoreDto) {
+  async create(ownerUserId: string, role: string, dto: CreateStoreDto) {
+    if (role !== 'ADMIN') {
+      const existingManagedStore = await this.prisma.store.findFirst({
+        where: {
+          ownerUserId,
+          status: {
+            in: ['PENDING', 'ACTIVE', 'SUSPENDED'],
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+        },
+      });
+
+      if (existingManagedStore) {
+        throw new BadRequestException(
+          `You already have an open store with status ${existingManagedStore.status}`,
+        );
+      }
+    }
+
     const existingSlug = await this.prisma.store.findUnique({
       where: {
         slug: dto.slug,
@@ -24,26 +47,36 @@ export class StoresService {
     });
 
     if (existingSlug) {
-      throw new BadRequestException('Store slug already exists');
+      throw new ConflictException('Store slug already exists');
     }
+    try {
+      return await this.prisma.store.create({
+        data: {
+          ownerUserId,
+          name: dto.name,
+          slug: dto.slug,
+          description: dto.description,
+          phone: dto.phone,
+          email: dto.email,
+          addressLine: dto.addressLine,
+          city: dto.city,
+          district: dto.district,
+          country: dto.country,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          deliveryRadiusKm: dto.deliveryRadiusKm,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Store slug already exists');
+      }
 
-    return this.prisma.store.create({
-      data: {
-        ownerUserId,
-        name: dto.name,
-        slug: dto.slug,
-        description: dto.description,
-        phone: dto.phone,
-        email: dto.email,
-        addressLine: dto.addressLine,
-        city: dto.city,
-        district: dto.district,
-        country: dto.country,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
-        deliveryRadiusKm: dto.deliveryRadiusKm,
-      },
-    });
+      throw error;
+    }
   }
 
   async findAll(query: StoreQueryDto) {

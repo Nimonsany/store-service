@@ -23,14 +23,20 @@ export class StoresController {
 
   @Post()
   create(
-    @Headers('x-user-id') ownerUserId: string | undefined,
-    @Body() dto: CreateStoreDto,
+    @Headers('x-user-id')
+    userId: string | undefined,
+
+    @Headers('x-user-role')
+    role: string | undefined,
+
+    @Body()
+    dto: CreateStoreDto,
   ) {
-    if (!ownerUserId) {
+    if (!userId || !role) {
       throw new UnauthorizedException('User identity is missing');
     }
 
-    return this.storesService.create(ownerUserId, dto);
+    return this.storesService.create(userId, role, dto);
   }
 
   @Get()
