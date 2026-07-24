@@ -116,17 +116,44 @@ export class StoresService {
     return store;
   }
 
+  private async ensureWriteAccess(
+    storeId: string,
+    userId: string,
+    role: string,
+  ) {
+    const store = await this.findOne(storeId);
+
+    if (role === 'ADMIN') {
+      return store;
+    }
+
+    if (store.ownerUserId !== userId) {
+      throw new ForbiddenException('You can only manage your own store');
+    }
+
+    if (store.status === 'SUSPENDED') {
+      throw new ForbiddenException('Suspended stores cannot be modified');
+    }
+
+    if (store.status === 'CLOSED') {
+      throw new ForbiddenException('Closed stores cannot be modified');
+    }
+
+    return store;
+  }
+
   async verifyManageAccess(storeId: string, userId: string, role: string) {
-    await this.ensureOwnership(storeId, userId, role);
+    const store = await this.ensureWriteAccess(storeId, userId, role);
 
     return {
       allowed: true,
-      storeId,
+      storeId: store.id,
+      status: store.status,
     };
   }
 
   async update(id: string, userId: string, role: string, dto: UpdateStoreDto) {
-    await this.ensureOwnership(id, userId, role);
+    await this.ensureWriteAccess(id, userId, role);
 
     if (dto.slug) {
       const existingSlug = await this.prisma.store.findUnique({
@@ -149,13 +176,15 @@ export class StoresService {
   }
 
   async remove(id: string, userId: string, role: string) {
-    await this.ensureOwnership(id, userId, role);
+    await this.findOne(id);
 
-    return this.prisma.store.delete({
-      where: {
-        id,
-      },
-    });
+    if (role !== 'ADMIN') {
+      throw new ForbiddenException('Stores cannot be permanently deleted');
+    }
+
+    throw new ForbiddenException(
+      'Use CLOSED status instead of deleting a store',
+    );
   }
 
   async updateStatus(id: string, role: string, dto: UpdateStoreStatusDto) {
