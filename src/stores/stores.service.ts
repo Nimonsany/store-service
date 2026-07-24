@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { UpdateStoreStatusDto } from './dto/update-store-status.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, StoreStatus } from '@prisma/client';
 import { StoreQueryDto } from './dto/store-query.dto';
 
 @Injectable()
@@ -165,7 +165,26 @@ export class StoresService {
       );
     }
 
-    await this.findOne(id);
+    const store = await this.findOne(id);
+
+    if (store.status === dto.status) {
+      return store;
+    }
+
+    const allowedTransitions: Record<StoreStatus, StoreStatus[]> = {
+      PENDING: [StoreStatus.ACTIVE, StoreStatus.CLOSED],
+      ACTIVE: [StoreStatus.SUSPENDED, StoreStatus.CLOSED],
+      SUSPENDED: [StoreStatus.ACTIVE, StoreStatus.CLOSED],
+      CLOSED: [],
+    };
+
+    const allowed = allowedTransitions[store.status];
+
+    if (!allowed.includes(dto.status)) {
+      throw new BadRequestException(
+        `Store status cannot change from ${store.status} to ${dto.status}`,
+      );
+    }
 
     return this.prisma.store.update({
       where: {
