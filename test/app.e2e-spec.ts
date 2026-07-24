@@ -1,38 +1,4 @@
-/*import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
-
-describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
-
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
-
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
-  });
-
-  afterEach(async () => {
-    await app.close();
-  });
-});
-*/
-
-import {
-  INestApplication,
-  ValidationPipe,
-} from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -43,17 +9,16 @@ describe('Store lifecycle (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
-  const ownerUserId =
-    '29887c63-7058-41f6-b6b9-f92b2c759716';
+  const ownerUserId = '29887c63-7058-41f6-b6b9-f92b2c759716';
 
   beforeAll(async () => {
-    process.env.DATABASE_URL =
-      'postgresql://nimon@localhost:5432/store_test_db';
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is required for E2E tests');
+    }
 
-    const moduleRef =
-      await Test.createTestingModule({
-        imports: [AppModule],
-      }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
 
     app = moduleRef.createNestApplication();
 
@@ -74,14 +39,11 @@ describe('Store lifecycle (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
     await app.close();
   });
 
   it('creates a pending store', async () => {
-    const response = await request(
-      app.getHttpServer(),
-    )
+    const response = await request(app.getHttpServer())
       .post('/stores')
       .set('x-user-id', ownerUserId)
       .set('x-user-role', 'STORE_OWNER')
@@ -95,13 +57,9 @@ describe('Store lifecycle (e2e)', () => {
       })
       .expect(201);
 
-    expect(response.body.status).toBe(
-      'PENDING',
-    );
+    expect(response.body.status).toBe('PENDING');
 
-    expect(response.body.ownerUserId).toBe(
-      ownerUserId,
-    );
+    expect(response.body.ownerUserId).toBe(ownerUserId);
   });
 
   it('rejects a second open store', async () => {
@@ -118,9 +76,7 @@ describe('Store lifecycle (e2e)', () => {
       },
     });
 
-    const response = await request(
-      app.getHttpServer(),
-    )
+    const response = await request(app.getHttpServer())
       .post('/stores')
       .set('x-user-id', ownerUserId)
       .set('x-user-role', 'STORE_OWNER')
@@ -134,9 +90,7 @@ describe('Store lifecycle (e2e)', () => {
       })
       .expect(400);
 
-    expect(response.body.message).toContain(
-      'open store',
-    );
+    expect(response.body.message).toContain('open store');
   });
 
   it('returns conflict for duplicate slug', async () => {
@@ -181,9 +135,7 @@ describe('Store lifecycle (e2e)', () => {
       },
     });
 
-    const response = await request(
-      app.getHttpServer(),
-    )
+    const response = await request(app.getHttpServer())
       .patch(`/stores/${store.id}/status`)
       .set('x-user-role', 'ADMIN')
       .send({
@@ -191,9 +143,7 @@ describe('Store lifecycle (e2e)', () => {
       })
       .expect(200);
 
-    expect(response.body.status).toBe(
-      'ACTIVE',
-    );
+    expect(response.body.status).toBe('ACTIVE');
   });
 
   it('rejects invalid status transition', async () => {
@@ -210,9 +160,7 @@ describe('Store lifecycle (e2e)', () => {
       },
     });
 
-    const response = await request(
-      app.getHttpServer(),
-    )
+    const response = await request(app.getHttpServer())
       .patch(`/stores/${store.id}/status`)
       .set('x-user-role', 'ADMIN')
       .send({
@@ -220,8 +168,6 @@ describe('Store lifecycle (e2e)', () => {
       })
       .expect(400);
 
-    expect(response.body.message).toContain(
-      'ACTIVE to PENDING',
-    );
+    expect(response.body.message).toContain('ACTIVE to PENDING');
   });
 });
