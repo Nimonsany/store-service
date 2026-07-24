@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -40,10 +41,7 @@ export class StoresController {
   }
 
   @Get()
-  findAll(
-    @Query()
-    query: StoreQueryDto,
-  ) {
+  findAll(@Query() query: StoreQueryDto) {
     return this.storesService.findAll(query);
   }
 
@@ -53,13 +51,27 @@ export class StoresController {
   }
 
   @Get(':id/public-access')
-  verifyPublicAccess(@Param('id') id: string) {
+  verifyPublicAccess(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    id: string,
+  ) {
     return this.storesService.verifyPublicAccess(id);
   }
 
   @Get(':id/manage-access')
   verifyManageAccess(
-    @Param('id') id: string,
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    id: string,
     @Headers('x-user-id') userId: string | undefined,
     @Headers('x-user-role') role: string | undefined,
   ) {
@@ -104,13 +116,26 @@ export class StoresController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    id: string,
+  ) {
     return this.storesService.findOne(id);
   }
 
   @Patch(':id/status')
   updateStatus(
-    @Param('id')
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
     id: string,
 
     @Headers('x-user-role')
@@ -128,10 +153,22 @@ export class StoresController {
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
-    @Headers('x-user-id') userId: string | undefined,
-    @Headers('x-user-role') role: string | undefined,
-    @Body() dto: UpdateStoreDto,
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    id: string,
+
+    @Headers('x-user-id')
+    userId: string | undefined,
+
+    @Headers('x-user-role')
+    role: string | undefined,
+
+    @Body()
+    dto: UpdateStoreDto,
   ) {
     if (!userId || !role) {
       throw new UnauthorizedException('User identity is missing');
@@ -142,9 +179,19 @@ export class StoresController {
 
   @Delete(':id')
   remove(
-    @Param('id') id: string,
-    @Headers('x-user-id') userId: string | undefined,
-    @Headers('x-user-role') role: string | undefined,
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    id: string,
+
+    @Headers('x-user-id')
+    userId: string | undefined,
+
+    @Headers('x-user-role')
+    role: string | undefined,
   ) {
     if (!userId || !role) {
       throw new UnauthorizedException('User identity is missing');
