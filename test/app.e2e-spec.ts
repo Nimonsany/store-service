@@ -6,12 +6,19 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Store lifecycle (e2e)', () => {
+  const internalServiceSecret = 'store-e2e-internal-secret';
+
+  const internalRequest = () =>
+    request
+      .agent(app.getHttpServer())
+      .set('x-internal-service-secret', internalServiceSecret);
   let app: INestApplication;
   let prisma: PrismaService;
 
   const ownerUserId = '29887c63-7058-41f6-b6b9-f92b2c759716';
 
   beforeAll(async () => {
+    process.env.INTERNAL_SERVICE_SECRET = internalServiceSecret;
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL is required for E2E tests');
     }
@@ -42,8 +49,24 @@ describe('Store lifecycle (e2e)', () => {
     await app.close();
   });
 
+  it('allows public store reads without internal credentials', async () => {
+    await request(app.getHttpServer()).get('/stores').expect(200);
+  });
+
+  it('rejects protected requests without internal service credentials', async () => {
+    await request(app.getHttpServer()).post('/stores').send({}).expect(401);
+  });
+
+  it('rejects protected requests with invalid internal service credentials', async () => {
+    await request(app.getHttpServer())
+      .post('/stores')
+      .set('x-internal-service-secret', 'wrong-secret')
+      .send({})
+      .expect(401);
+  });
+
   it('creates a pending store', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await internalRequest()
       .post('/stores')
       .set('x-user-id', ownerUserId)
       .set('x-user-role', 'STORE_OWNER')
@@ -76,7 +99,7 @@ describe('Store lifecycle (e2e)', () => {
       },
     });
 
-    const response = await request(app.getHttpServer())
+    const response = await internalRequest()
       .post('/stores')
       .set('x-user-id', ownerUserId)
       .set('x-user-role', 'STORE_OWNER')
@@ -107,7 +130,7 @@ describe('Store lifecycle (e2e)', () => {
       },
     });
 
-    await request(app.getHttpServer())
+    await internalRequest()
       .post('/stores')
       .set('x-user-id', ownerUserId)
       .set('x-user-role', 'STORE_OWNER')
@@ -135,7 +158,7 @@ describe('Store lifecycle (e2e)', () => {
       },
     });
 
-    const response = await request(app.getHttpServer())
+    const response = await internalRequest()
       .patch(`/stores/${store.id}/status`)
       .set('x-user-role', 'ADMIN')
       .send({
@@ -160,7 +183,7 @@ describe('Store lifecycle (e2e)', () => {
       },
     });
 
-    const response = await request(app.getHttpServer())
+    const response = await internalRequest()
       .patch(`/stores/${store.id}/status`)
       .set('x-user-role', 'ADMIN')
       .send({

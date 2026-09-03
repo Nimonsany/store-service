@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 
 import { StoresService } from './stores.service';
@@ -17,12 +18,14 @@ import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { UpdateStoreStatusDto } from './dto/update-store-status.dto';
 import { StoreQueryDto } from './dto/store-query.dto';
+import { InternalServiceGuard } from '../security/guards/internal-service.guard';
 
 @Controller('stores')
 export class StoresController {
   constructor(private readonly storesService: StoresService) {}
 
   @Post()
+  @UseGuards(InternalServiceGuard)
   create(
     @Headers('x-user-id')
     userId: string | undefined,
@@ -64,6 +67,7 @@ export class StoresController {
   }
 
   @Get(':id/manage-access')
+  @UseGuards(InternalServiceGuard)
   verifyManageAccess(
     @Param(
       'id',
@@ -83,6 +87,7 @@ export class StoresController {
   }
 
   @Get('management/all')
+  @UseGuards(InternalServiceGuard)
   findForManagement(
     @Headers('x-user-role')
     role: string | undefined,
@@ -98,6 +103,7 @@ export class StoresController {
   }
 
   @Get('owner/me')
+  @UseGuards(InternalServiceGuard)
   findMyStores(
     @Headers('x-user-id')
     userId: string | undefined,
@@ -129,6 +135,7 @@ export class StoresController {
   }
 
   @Patch(':id/status')
+  @UseGuards(InternalServiceGuard)
   updateStatus(
     @Param(
       'id',
@@ -152,6 +159,7 @@ export class StoresController {
   }
 
   @Patch(':id')
+  @UseGuards(InternalServiceGuard)
   update(
     @Param(
       'id',
@@ -178,6 +186,7 @@ export class StoresController {
   }
 
   @Delete(':id')
+  @UseGuards(InternalServiceGuard)
   remove(
     @Param(
       'id',
