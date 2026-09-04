@@ -4,6 +4,8 @@ import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { configureHttpObservability } from '../src/observability/http-observability';
+import { SafeExceptionFilter } from '../src/observability/safe-exception.filter';
 
 describe('Store lifecycle (e2e)', () => {
   const internalServiceSecret = 'store-e2e-internal-secret';
@@ -29,6 +31,9 @@ describe('Store lifecycle (e2e)', () => {
 
     app = moduleRef.createNestApplication();
 
+    configureHttpObservability(app);
+    app.useGlobalFilters(new SafeExceptionFilter());
+
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -47,6 +52,24 @@ describe('Store lifecycle (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
+  });
+
+  it('generates a request ID for a public store request', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/stores')
+      .expect(200);
+
+    expect(response.headers['x-request-id']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  it('preserves a gateway request ID for a public store request', async () => {
+    await request(app.getHttpServer())
+      .get('/stores')
+      .set('X-Request-Id', 'gateway-store-e2e-123')
+      .expect('X-Request-Id', 'gateway-store-e2e-123')
+      .expect(200);
   });
 
   it('allows public store reads without internal credentials', async () => {

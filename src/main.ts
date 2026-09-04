@@ -1,6 +1,8 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { configureHttpObservability } from './observability/http-observability';
+import { SafeExceptionFilter } from './observability/safe-exception.filter';
 
 function validateProductionEnvironment(): void {
   if (process.env.NODE_ENV !== 'production') {
@@ -20,6 +22,9 @@ async function bootstrap() {
   validateProductionEnvironment();
 
   const app = await NestFactory.create(AppModule);
+
+  configureHttpObservability(app);
+  app.useGlobalFilters(new SafeExceptionFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({
